@@ -1,0 +1,93 @@
+#!/bin/bash -eu
+
+# create a binary UEFI variable store blob which
+# can be used create a AWS EC2 instance that support secure boot
+#
+# commands taken from https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/aws-binary-blob-creation.html
+
+
+function create_blob() {
+    local WORKDIR=$1
+    local ARCH=$2
+    local RESULT=$3
+
+    # Create an empty PK signature list
+    touch "${WORKDIR}"/empty_key.crt
+    cert-to-efi-sig-list "${WORKDIR}"/empty_key.crt "${WORKDIR}"/PK.esl
+
+    # Download the KEK certificates
+    curl -s https://go.microsoft.com/fwlink/?LinkId=321185 --output "${WORKDIR}"/MS_KEK_CA.crt
+    # Wrap the KEK certificates in a UEFI signature list (siglist)
+    sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_Win_KEK.esl "${WORKDIR}"/MS_KEK_CA.crt
+
+    # Download Microsoft's db certificates
+    # MicWinProPCA2011_2011-10-19.crt is not needed. it's used to sign Microsoft products
+
+    # we use the crt from the shim-signed source package (the microsoft link to the same file is https://www.microsoft.com/pkiops/certs/MicCorUEFCA2011_2011-06-27.crt)
+    curl -s https://git.launchpad.net/ubuntu/+source/shim-signed/plain/MicCorUEFCA2011_2011-06-27.crt --output "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
+
+    # Generate the db signature list
+    sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_UEFI_db.esl "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
+    cat "${WORKDIR}"/MS_UEFI_db.esl > "${WORKDIR}"/MS_db.esl
+
+    # Download an updated dbx change request from the following link
+    # https://uefi.org/revocationlistfile
+    # NOTE: we use the dbx file from ubuntu here
+    case ${ARCH} in
+        amd64)
+            curl -s https://git.launchpad.net/ubuntu/+source/secureboot-db/plain/data-amd64/updates/dbx/dbxupdate_x64.bin --output "${WORKDIR}"/dbxupdate.bin
+            ;;
+        arm64)
+            curl -s https://git.launchpad.net/ubuntu/+source/secureboot-db/plain/data-arm64/updates/dbx/dbxupdate_arm64.bin --output "${WORKDIR}"/dbxupdate.bin
+            ;;
+        *)
+            echo "Invalid arch ${ARCH}"
+            exit 1
+            ;;
+    esac
+
+    # Build a UEFI variable store using the uefivars.py script
+    # uefivars script taken from https://github.com/awslabs/python-uefivars
+    uefivars -i none -o aws -O "$RESULT" -P "${WORKDIR}"/PK.esl -K "${WORKDIR}"/MS_Win_KEK.esl --db "${WORKDIR}"/MS_db.esl  --dbx "${WORKDIR}"/dbxupdate.bin
+}
+
+
+function usage() {
+    cat << EOF >&2
+    usage: $0 [-a|o|h]
+
+    options:
+        a    architecture (can be amd64 or arm64). default: amd64
+        o    output filename. default: aws-uefiblob.bin
+        h    this help
+EOF
+}
+
+
+function cleanup {
+  rm -rf "${TMPDIR}"
+}
+
+
+while getopts "ho:a:" option; do
+   case $option in
+      h)
+         usage
+         exit;;
+      a)
+          ARCH=$OPTARG;;
+      o)
+          OUTPUT=$OPTARG;;
+      \?)
+          echo "Error: Invalid option"
+          exit;;
+   esac
+done
+
+TMPDIR=$(mktemp --directory aws-build-varstore-blob.XXXXXXXXXX)
+trap cleanup EXIT
+ARCH=${ARCH:-amd64}
+OUTPUT=${OUTPUT:-aws-uefiblob.bin}
+
+
+create_blob "${TMPDIR}" "${ARCH}" "${OUTPUT}"
