@@ -19,10 +19,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Install uefivars snap
-        run: snap install uefivars
+      - name: Install dependencies
+        run: |
+          sudo snap install uefivars
+          sudo apt install --yes efitools
       - uses: actions/checkout@v2
       - name: Run aws-secureboot-blob
         run: |
-          aws-secureboot-blob -a amd64 -o blob.amd64.bin
-          aws-secureboot-blob -a arm64 -o blob.arm64.bin
+          ./aws-secureboot-blob -a amd64 -o blob.amd64.bin
+          ./aws-secureboot-blob -a arm64 -o blob.arm64.bin
