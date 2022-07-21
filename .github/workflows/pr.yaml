@@ -1,0 +1,28 @@
+name: Run tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  shellcheck:
+    name: Shellcheck
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run ShellCheck
+      uses: ludeeus/action-shellcheck@master
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Install uefivars snap
+        run: snap install uefivars
+      - uses: actions/checkout@v2
+      - name: Run aws-secureboot-blob
+        run: |
+          aws-secureboot-blob -a amd64 -o blob.amd64.bin
+          aws-secureboot-blob -a arm64 -o blob.arm64.bin
