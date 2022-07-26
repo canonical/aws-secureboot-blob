@@ -28,3 +28,7 @@ jobs:
         run: |
           ./aws-secureboot-blob -a amd64 -o blob.amd64.bin
           ./aws-secureboot-blob -a arm64 -o blob.arm64.bin
+      - uses: actions/upload-artifact@v3
+        with:
+          name: artifact
+          path: blob.*.bin
