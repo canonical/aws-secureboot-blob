@@ -1,0 +1,50 @@
+#!/bin/bash -eux
+
+# that var is set by github actions
+GITHUB_ENV=${GITHUB_ENV:-/dev/null}
+# the architecture to use
+ARCH=amd64
+# the AWS architecture
+ARCH_AWS="${ARCH}"
+# the suite to get the base image for
+SUITE=jammy
+# the AWS region to use
+AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-eu-central-1}
+# the path to the varstore blob (created by aws-secureboot-blob)
+VARSTORE_BLOB=${VARSTORE_BLOB:-blobs/blob.$ARCH.bin}
+# the AMI name
+AMI_NEW_NAME=aws-secureboot-blob-${ARCH}-$(date '+%Y%m%d%H%M%S')
+# AWS key pair name
+KEY_NAME=${KEY_NAME:-github-actions}
+# AWS instance type
+INSTANCE_TYPE=${INSTANCE_TYPE:-t3.medium}
+
+# convert the AWS architecture
+if [ "${ARCH_AWS}" = "amd64" ]; then
+    ARCH_AWS="x86_64"
+fi
+
+# get the latest ami for given suite and arch
+AMI=$(aws ssm get-parameters --names "/aws/service/canonical/ubuntu/server/${SUITE}/stable/current/${ARCH}/hvm/ebs-gp2/ami-id" --query 'Parameters[0].Value' --output text)
+echo "AMI=${AMI}" >> "${GITHUB_ENV}"
+
+# get the snapshot for that ami
+AMI_SNAPSHOT=$(aws ec2 describe-images  --image-id "${AMI}"|jq -r '.Images[0].BlockDeviceMappings[0].Ebs.SnapshotId')
+echo "AMI_SNAPSHOT=${AMI_SNAPSHOT}" >> "${GITHUB_ENV}"
+
+# copy the snapshot
+AMI_SNAPSHOT_NEW=$(aws ec2 copy-snapshot --source-region "${AWS_DEFAULT_REGION}" --source-snapshot-id "${AMI_SNAPSHOT}" --description "aws-secureboot-blob testing; copied from ${AMI_SNAPSHOT}"|jq -r '.SnapshotId')
+echo "AMI_SNAPSHOT_NEW=${AMI_SNAPSHOT_NEW}" >> "${GITHUB_ENV}"
+aws ec2 wait snapshot-completed --snapshot-ids "${AMI_SNAPSHOT_NEW}"
+
+# create new AMI
+AMI_NEW=$(aws ec2 register-image --name "${AMI_NEW_NAME}" --uefi-data "$(cat "${VARSTORE_BLOB}")" --block-device-mappings "DeviceName=/dev/sda1,Ebs= {SnapshotId=""${AMI_SNAPSHOT_NEW}"",DeleteOnTermination=true}" --architecture "${ARCH_AWS}" --root-device-name /dev/sda1 --virtualization-type hvm --ena-support --boot-mode uefi|jq -r '.ImageId')
+echo "AMI_NEW=${AMI_NEW}" >> "${GITHUB_ENV}"
+aws ec2 wait image-exists --image-ids "${AMI_NEW}"
+aws ec2 wait image-available --image-ids "${AMI_NEW}"
+
+# boot instance
+INSTANCE=$(aws ec2 run-instances --image-id "${AMI_NEW}" --instance-type "${INSTANCE_TYPE}" --key-name "${KEY_NAME}"|jq -r '.Instances[].InstanceId')
+echo "INSTANCE=${INSTANCE}" >> "${GITHUB_ENV}"
+INSTANCE_IP=$(aws ec2 describe-instances --instance-ids "${INSTANCE}"|jq -r '.Reservations[].Instances[].PublicIpAddress')
+echo "INSTANCE_IP=${INSTANCE_IP}" >> "${GITHUB_ENV}"
