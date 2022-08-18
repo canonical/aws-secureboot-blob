@@ -46,9 +46,12 @@ function create_blob() {
             ;;
     esac
 
+    # split signature and binary data
+    ./dbxupdate-split.py --content "${WORKDIR}"/dbxupdate.bin.esl --signature "${WORKDIR}"/dbxupdate.bin.p7 "${WORKDIR}"/dbxupdate.bin
+
     # Build a UEFI variable store using the uefivars.py script
     # uefivars script taken from https://github.com/awslabs/python-uefivars
-    uefivars -i none -o aws -O "$RESULT" -P "${WORKDIR}"/PK.esl -K "${WORKDIR}"/MS_Win_KEK.esl --db "${WORKDIR}"/MS_db.esl  --dbx "${WORKDIR}"/dbxupdate.bin
+    uefivars -i none -o aws -O "$RESULT" -P "${WORKDIR}"/PK.esl -K "${WORKDIR}"/MS_Win_KEK.esl --db "${WORKDIR}"/MS_db.esl  --dbx "${WORKDIR}"/dbxupdate.bin.esl
 }
 
 
