@@ -16,9 +16,9 @@ function create_blob() {
     cert-to-efi-sig-list "${WORKDIR}"/empty_key.crt "${WORKDIR}"/PK.esl
 
     # Download the KEK certificates
-    curl -s https://go.microsoft.com/fwlink/?LinkId=321185 --output "${WORKDIR}"/MS_KEK_CA.crt
+    curl -s -L https://go.microsoft.com/fwlink/?LinkId=321185 --output "${WORKDIR}"/MicCorKEKCA2011_2011-06-24.crt
     # Wrap the KEK certificates in a UEFI signature list (siglist)
-    sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_Win_KEK.esl "${WORKDIR}"/MS_KEK_CA.crt
+    sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_Win_KEK.esl "${WORKDIR}"/MicCorKEKCA2011_2011-06-24.crt
 
     # Download Microsoft's db certificates
     # MicWinProPCA2011_2011-10-19.crt is not needed. it's used to sign Microsoft products
