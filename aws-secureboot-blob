@@ -28,7 +28,6 @@ function create_blob() {
 
     # Generate the db signature list
     sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_UEFI_db.esl "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
-    cat "${WORKDIR}"/MS_UEFI_db.esl > "${WORKDIR}"/MS_db.esl
 
     # Download an updated dbx change request from the following link
     # https://uefi.org/revocationlistfile
@@ -51,7 +50,7 @@ function create_blob() {
 
     # Build a UEFI variable store using the uefivars.py script
     # uefivars script taken from https://github.com/awslabs/python-uefivars
-    uefivars -i none -o aws -O "$RESULT" -P "${WORKDIR}"/PK.esl -K "${WORKDIR}"/MS_Win_KEK.esl --db "${WORKDIR}"/MS_db.esl  --dbx "${WORKDIR}"/dbxupdate.bin.esl
+    uefivars -i none -o aws -O "$RESULT" -P "${WORKDIR}"/PK.esl -K "${WORKDIR}"/MS_Win_KEK.esl --db "${WORKDIR}"/MS_UEFI_db.esl  --dbx "${WORKDIR}"/dbxupdate.bin.esl
 }
 
 
