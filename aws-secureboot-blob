@@ -22,9 +22,9 @@ function create_blob() {
 
     # Download Microsoft's db certificates
     # MicWinProPCA2011_2011-10-19.crt is not needed. it's used to sign Microsoft products
-
     # we use the crt from the shim-signed source package (the microsoft link to the same file is https://www.microsoft.com/pkiops/certs/MicCorUEFCA2011_2011-06-27.crt)
-    curl -s https://git.launchpad.net/ubuntu/+source/shim-signed/plain/MicCorUEFCA2011_2011-06-27.crt --output "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
+    curl -s https://git.launchpad.net/ubuntu/+source/shim-signed/plain/MicCorUEFCA2011_2011-06-27.crt --output "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.pem
+    openssl x509 -outform der -in "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.pem -out "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
 
     # Generate the db signature list
     sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_UEFI_db.esl "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
