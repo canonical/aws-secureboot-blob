@@ -16,19 +16,18 @@ function create_blob() {
     cert-to-efi-sig-list "${WORKDIR}"/empty_key.crt "${WORKDIR}"/PK.esl
 
     # Download the KEK certificates
-    curl -s https://go.microsoft.com/fwlink/?LinkId=321185 --output "${WORKDIR}"/MS_KEK_CA.crt
+    curl -s -L https://go.microsoft.com/fwlink/?LinkId=321185 --output "${WORKDIR}"/MicCorKEKCA2011_2011-06-24.crt
     # Wrap the KEK certificates in a UEFI signature list (siglist)
-    sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_Win_KEK.esl "${WORKDIR}"/MS_KEK_CA.crt
+    sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_Win_KEK.esl "${WORKDIR}"/MicCorKEKCA2011_2011-06-24.crt
 
     # Download Microsoft's db certificates
     # MicWinProPCA2011_2011-10-19.crt is not needed. it's used to sign Microsoft products
-
     # we use the crt from the shim-signed source package (the microsoft link to the same file is https://www.microsoft.com/pkiops/certs/MicCorUEFCA2011_2011-06-27.crt)
-    curl -s https://git.launchpad.net/ubuntu/+source/shim-signed/plain/MicCorUEFCA2011_2011-06-27.crt --output "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
+    curl -s https://git.launchpad.net/ubuntu/+source/shim-signed/plain/MicCorUEFCA2011_2011-06-27.crt --output "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.pem
+    openssl x509 -outform der -in "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.pem -out "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
 
     # Generate the db signature list
     sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_UEFI_db.esl "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
-    cat "${WORKDIR}"/MS_UEFI_db.esl > "${WORKDIR}"/MS_db.esl
 
     # Download an updated dbx change request from the following link
     # https://uefi.org/revocationlistfile
@@ -46,9 +45,12 @@ function create_blob() {
             ;;
     esac
 
+    # split signature and binary data
+    ./dbxupdate-split.py --content "${WORKDIR}"/dbxupdate.bin.esl --signature "${WORKDIR}"/dbxupdate.bin.p7 "${WORKDIR}"/dbxupdate.bin
+
     # Build a UEFI variable store using the uefivars.py script
     # uefivars script taken from https://github.com/awslabs/python-uefivars
-    uefivars -i none -o aws -O "$RESULT" -P "${WORKDIR}"/PK.esl -K "${WORKDIR}"/MS_Win_KEK.esl --db "${WORKDIR}"/MS_db.esl  --dbx "${WORKDIR}"/dbxupdate.bin
+    uefivars -i none -o aws -O "$RESULT" -P "${WORKDIR}"/PK.esl -K "${WORKDIR}"/MS_Win_KEK.esl --db "${WORKDIR}"/MS_UEFI_db.esl  --dbx "${WORKDIR}"/dbxupdate.bin.esl
 }
 
 
