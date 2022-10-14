@@ -26,8 +26,8 @@ jobs:
       - uses: actions/checkout@v2
       - name: Run aws-secureboot-blob
         run: |
-          ./aws-secureboot-blob -a amd64 -o blob.amd64.bin
-          ./aws-secureboot-blob -a arm64 -o blob.arm64.bin
+          ./aws-secureboot-blob -s jammy -a amd64 -o blob.amd64.bin
+          ./aws-secureboot-blob -s jammy -a arm64 -o blob.arm64.bin
           # for debugging
           uefivars -i aws -o json -I blob.amd64.bin
           uefivars -i aws -o json -I blob.arm64.bin
@@ -81,6 +81,7 @@ jobs:
 
           # install tools for more checks
           apt update
+          apt-cache policy efitools
           apt install --yes efitools
 
           efi-readvar -v KEK
