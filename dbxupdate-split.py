@@ -10,6 +10,7 @@ Inspired by https://www.powershellgallery.com/packages/SplitDbxContent/1.0
 
 import argparse
 import sys
+import struct
 
 
 def _parser():
@@ -32,6 +33,12 @@ if __name__ == '__main__':
 
     with open(args.dbxupdate, 'rb') as f:
         buf = f.read()
+        # the wCertificateType (UINT16) must be WIN_CERT_TYPE_EFI_GUID
+        wCertificateType, = struct.unpack('H', buf[22:24])
+        if wCertificateType != 0x0ef1:
+            print(f'Certificate type is 0x{wCertificateType:04x} not WIN_CERT_TYPE_EFI_GUID (0x0ef1).', file=sys.stderr)
+            sys.exit(3)
+
         # Identify file signature
         chop = buf[40:]
 
@@ -41,7 +48,7 @@ if __name__ == '__main__':
 
         # Signature is known to be ASN size plus header of 4 bytes
         signature_length = (chop[2] * 256) + chop[3] + 4
-        signature = chop[0:signature_length - 1]
+        signature = chop[0:signature_length]
 
         if signature_length > (len(buf) + 40):
             print('error: signature longer than file size', file=sys.stderr)
