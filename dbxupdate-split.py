@@ -48,7 +48,7 @@ if __name__ == '__main__':
 
         # Signature is known to be ASN size plus header of 4 bytes
         signature_length = (chop[2] * 256) + chop[3] + 4
-        signature = chop[0:signature_length - 1]
+        signature = chop[0:signature_length]
 
         if signature_length > (len(buf) + 40):
             print('error: signature longer than file size', file=sys.stderr)
