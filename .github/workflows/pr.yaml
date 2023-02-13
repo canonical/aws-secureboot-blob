@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo snap install uefivars
-          sudo apt install --yes efitools
+          sudo apt-get install --yes efitools
       - uses: actions/checkout@v2
       - name: Run aws-secureboot-blob
         run: |
@@ -45,7 +45,7 @@ jobs:
         uses: actions/checkout@v2
       - name: Install dependencies
         run: |
-          sudo apt install --yes openssl
+          sudo apt-get install --yes openssl
       - name: Run dbxupdate-split
         run: |
           ./dbxupdate-split.py /usr/share/secureboot/updates/dbx/dbxupdate_x64.bin
@@ -106,13 +106,16 @@ jobs:
           cat << EOF > test.sh
           #!/bin/bash -eux
 
+          # wait for cloud-init to finish
+          cloud-init status --wait
+
           # secure boot should be enabled
           mokutil --sb-state|grep enabled
 
           # install tools for more checks
-          apt update
+          apt-get update
           apt-cache policy efitools
-          apt install --yes efitools
+          apt-get install --yes efitools
 
           efi-readvar -v KEK
           efi-readvar -v db
