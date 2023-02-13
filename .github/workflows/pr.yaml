@@ -106,6 +106,9 @@ jobs:
           cat << EOF > test.sh
           #!/bin/bash -eux
 
+          # wait for cloud-init to finish
+          cloud-init status --wait
+
           # secure boot should be enabled
           mokutil --sb-state|grep enabled
 
