@@ -8,9 +8,7 @@
 
 function create_blob() {
     local WORKDIR=$1
-    local SUITE=$2
-    local ARCH=$3
-    local RESULT=$4
+    local RESULT=$2
 
     # Create an empty PK signature list
     touch "${WORKDIR}"/empty_key.crt
@@ -30,28 +28,9 @@ function create_blob() {
     # Generate the db signature list
     sbsiglist --owner 77fa9abd-0359-4d32-bd60-28f4e78f784b --type x509 --output "${WORKDIR}"/MS_UEFI_db.esl "${WORKDIR}"/MicCorUEFCA2011_2011-06-27.crt
 
-    # Download an updated dbx change request from the following link
-    # https://uefi.org/revocationlistfile
-    # NOTE: we use the dbx file from ubuntu here
-    case ${ARCH} in
-        amd64)
-            curl -s https://git.launchpad.net/ubuntu/+source/secureboot-db/plain/data-amd64/updates/dbx/dbxupdate_x64.bin?h=ubuntu/"${SUITE}" --output "${WORKDIR}"/dbxupdate.bin
-            ;;
-        arm64)
-            curl -s https://git.launchpad.net/ubuntu/+source/secureboot-db/plain/data-arm64/updates/dbx/dbxupdate_arm64.bin?h=ubuntu/"${SUITE}" --output "${WORKDIR}"/dbxupdate.bin
-            ;;
-        *)
-            echo "Invalid arch ${ARCH}"
-            exit 1
-            ;;
-    esac
-
-    # split signature and binary data
-    ./dbxupdate-split.py --content "${WORKDIR}"/dbxupdate.bin.esl --signature "${WORKDIR}"/dbxupdate.bin.p7 "${WORKDIR}"/dbxupdate.bin
-
     # Build a UEFI variable store using the uefivars.py script
     # uefivars script taken from https://github.com/awslabs/python-uefivars
-    uefivars -i none -o aws -O "$RESULT" -P "${WORKDIR}"/PK.esl -K "${WORKDIR}"/MS_Win_KEK.esl --db "${WORKDIR}"/MS_UEFI_db.esl  --dbx "${WORKDIR}"/dbxupdate.bin.esl
+    uefivars -i none -o aws -O "$RESULT" -P "${WORKDIR}"/PK.esl -K "${WORKDIR}"/MS_Win_KEK.esl --db "${WORKDIR}"/MS_UEFI_db.esl
 }
 
 
@@ -60,8 +39,6 @@ function usage() {
     usage: $0 [-a|o|h]
 
     options:
-        s    suite (eg. 'jammy' or 'jammy-updates'). default: jammy
-        a    architecture (can be amd64 or arm64). default: amd64
         o    output filename. default: aws-uefiblob.bin
         h    this help
 EOF
@@ -73,15 +50,11 @@ function cleanup {
 }
 
 
-while getopts "ho:s:a:" option; do
+while getopts "ho:" option; do
    case $option in
       h)
          usage
          exit;;
-      s)
-          SUITE=$OPTARG;;
-      a)
-          ARCH=$OPTARG;;
       o)
           OUTPUT=$OPTARG;;
       \?)
@@ -92,9 +65,7 @@ done
 
 TMPDIR=$(mktemp --directory aws-build-varstore-blob.XXXXXXXXXX)
 trap cleanup EXIT
-SUITE=${SUITE:-jammy}
-ARCH=${ARCH:-amd64}
 OUTPUT=${OUTPUT:-aws-uefiblob.bin}
 
 
-create_blob "${TMPDIR}" "${SUITE}" "${ARCH}" "${OUTPUT}"
+create_blob "${TMPDIR}" "${OUTPUT}"

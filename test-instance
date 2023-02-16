@@ -11,7 +11,7 @@ SUITE=jammy
 # the AWS region to use
 AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION:-eu-central-1}
 # the path to the varstore blob (created by aws-secureboot-blob)
-VARSTORE_BLOB=${VARSTORE_BLOB:-blobs/blob.$ARCH.bin}
+VARSTORE_BLOB=${VARSTORE_BLOB:-blobs/blob.bin}
 # the AMI name
 AMI_NEW_NAME=aws-secureboot-blob-${ARCH}-$(date '+%Y%m%d%H%M%S')
 # AWS key pair name
