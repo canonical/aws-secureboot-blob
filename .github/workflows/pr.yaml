@@ -32,7 +32,7 @@ jobs:
           ./aws-secureboot-blob -o blob.bin
           # for debugging
           uefivars -i aws -o json -I blob.bin
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: blob-artifact
           path: blob.bin
